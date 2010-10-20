@@ -1,6 +1,6 @@
 <?php
 /**
- * @version		$Id$
+ * @version		$Id: jea.php 1.5.1 2010-10-20
  * @package		JEA
  * @copyright	Copyright (C) 2010 Thader Consultores, C.B. All rights reserved.
  * @license		GNU/GPL license: http://www.gnu.org/copyleft/gpl.html
@@ -9,7 +9,6 @@
 // no direct access
 defined( '_JEXEC' ) or die( 'Restricted access' );
 
-//$mainframe->registerEvent( 'onSearch', 'plgSearchJea' );
 $mainframe->registerEvent( 'onSearchAreas', 'plgSearchJeaAreas' );
 
 JPlugin::loadLanguage( 'plg_search_jea' );
@@ -60,8 +59,6 @@ class plgSearchJea extends JPlugin {
  */
 	function onSearch( $text, $phrase='', $ordering='', $areas=null )
 	{
-		//global $mainframe;
-
 		$db		=& JFactory::getDBO();
 		$user	=& JFactory::getUser();
 
@@ -75,7 +72,10 @@ class plgSearchJea extends JPlugin {
 		}
 
 		$limit = $this->_params->def( 'search_limit', 50 );
-
+		$sref = $this->_params->def( 'search_ref', 1 );
+		$stitle = $this->_params->def( 'search_title', 1 );
+		$sdescription = $this->_params->def( 'search_description', 0 );
+		
 		$text = trim( $text );
 		if ($text == '') {
 			return array();
@@ -86,8 +86,9 @@ class plgSearchJea extends JPlugin {
 			case 'exact':
 				$text		= $db->Quote( '%'.$db->getEscaped( $text, true ).'%', false );
 				$wheres2 	= array();
-				$wheres2[] 	= 'p.ref LIKE '.$text;			// Reference
-				$wheres2[] 	= 'p.title LIKE '.$text;		// Title
+				if ($sref == 1) $wheres2[] 	= 'p.ref LIKE '.$text;						// Reference
+				if ($stitle == 1) $wheres2[] 	= 'p.title LIKE '.$text;				// Title
+				if ($sdescription == 1) $wheres2[] 	= 'p.description LIKE '.$text;		// Description
 				$where 		= '(' . implode( ') OR (', $wheres2 ) . ')';
 				break;
 
@@ -99,8 +100,9 @@ class plgSearchJea extends JPlugin {
 				foreach ($words as $word) {
 					$word		= $db->Quote( '%'.$db->getEscaped( $word, true ).'%', false );
 					$wheres2 	= array();
-					$wheres2[] 	= 'p.ref LIKE '.$word;		// Reference
-					$wheres2[] 	= 'p.title LIKE '.$word;	// Title
+					if ($sref == 1) $wheres2[] 	= 'p.ref LIKE '.$word;						// Reference
+					if ($stitle == 1) $wheres2[] 	= 'p.title LIKE '.$word;				// Title
+					if ($sdescription == 1) $wheres2[] 	= 'p.description LIKE '.$word;		// Description
 					$wheres[] 	= implode( ' OR ', $wheres2 );
 				}
 				$where = '(' . implode( ($phrase == 'all' ? ') AND (' : ') OR ('), $wheres ) . ')';
@@ -132,11 +134,10 @@ class plgSearchJea extends JPlugin {
 
 		$rows = array();
 
-		// search in reference
 		if ( $limit > 0 )
 		{
-			$query = 'SELECT p.title AS title, p.ref AS ref,'
-			. ' p.date_insert AS created, p.land_space AS text,'
+			$query = 'SELECT p.title AS title, p.ref AS ref, p.description AS description,'
+			. ' p.date_insert AS created, p.land_space AS text, p.type_id AS type,'
 			. ' t.value AS section,'
 			. ' CASE WHEN CHAR_LENGTH(p.alias) THEN CONCAT_WS(":", p.id, p.alias) ELSE p.id END as slug,'
 			. ' "2" AS browsernav'
@@ -155,29 +156,38 @@ class plgSearchJea extends JPlugin {
 			{
 				foreach($list as $key => $item)
 				{
-					$list[$key]->href = 'index.php?option=com_jea&view=properties&id='.$item->slug;		// Mejorar esto y buscar Itemid
+					$component =& JComponentHelper::getComponent('com_jea');
+
+					$menus	= &JApplication::getMenu('site', array());
+					$mitems	= $menus->getItems('componentid', $component->id);
+
+					$match = null;
+
+					foreach($mitems as $mitem)							// To search the Itemid
+					{
+						if (@$mitem->query['view'] == 'properties') {
+							$params = @$mitem->params;					// Params from the menu item.
+							$exploded = explode("\n",$params);
+							$type_id = ltrim($exploded[1],'type_id=');	// In $exploded[1] is the type_id of the menu item
+							if ($type_id == $item->type) {
+								$match = $mitem;
+								break;
+							}
+						}
+					}
+					
+					$link = 'index.php?option=com_jea&view=properties&id='.$item->slug;
+					
+					if(isset($match)) {									// In case it doesn't match, it puts the Itemid configured in the mod_search
+						$link .= '&Itemid='.$match->id;
+					}
+					
+					$list[$key]->href = JRoute::_($link);
 				}
 			}
 			$rows[] = $list;
 		}
 
-		$results = array();
-		if(count($rows))
-		{
-			foreach($rows as $row)
-			{
-				/*$new_row = array();
-				foreach($row AS $key => $property) {
-					if(searchHelper::checkNoHTML($property, $searchText, array('ref', 'title'))) {
-						$new_row[] = $property;
-					}
-				}
-				$results = array_merge($results, (array) $new_row);*/
-				//$results = array_merge($results, (array) $row);*/
-			}
-		}
-
-		//return $results;
 		return $list;
 	}
 }
