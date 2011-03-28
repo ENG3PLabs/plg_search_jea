@@ -1,6 +1,6 @@
 <?php
 /**
- * @version		$Id: jea.php 1.5.1 2010-10-20
+ * @version		$Id: jea.php 1.5.2 2010-03-28
  * @package		JEA
  * @copyright	Copyright (C) 2010 Thader Consultores, C.B. All rights reserved.
  * @license		GNU/GPL license: http://www.gnu.org/copyleft/gpl.html
@@ -136,8 +136,8 @@ class plgSearchJea extends JPlugin {
 
 		if ( $limit > 0 )
 		{
-			$query = 'SELECT p.title AS title, p.ref AS ref, p.description AS description,'
-			. ' p.date_insert AS created, p.land_space AS text, p.type_id AS type,'
+			$query = 'SELECT p.title AS title, p.ref AS ref,'
+			. ' p.date_insert AS created, p.description AS text, p.type_id AS type,'
 			. ' t.value AS section,'
 			. ' CASE WHEN CHAR_LENGTH(p.alias) THEN CONCAT_WS(":", p.id, p.alias) ELSE p.id END as slug,'
 			. ' "2" AS browsernav'
